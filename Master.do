@@ -68,7 +68,7 @@ estat ic
 mixed cheating_gdp quarter4 || provinceid: || citycode: if insample == 1, reml
 mixed cheating_gdp quarter4 target_city rank_gdpr_3q mayor_age secretary_age Rank  mayor_lastyear secretary_lastyear Industry3 urbanization  population_density  aqi Temperature Precipitation Sunshine Target_Attainment_Rate || provinceid: || citycode:, reml 
 
-**Table 1: Descriptive Statistics
+**Descriptive Statistics
 tabstat ln_gdp lntrue_gdp cheating_gdp quarter4 market fiscal_autonomy Provincial_Secretary target_city rank_gdpr_3q Industry3 mayor_age secretary_age mayor_lastyear secretary_lastyear Rank  population_density  urbanization  aqi Temperature Precipitation Sunshine Target_Attainment_Rate,s( mean sd min max) c(s) f(%10.2f)	
 
 *****************************************************************************
@@ -86,7 +86,7 @@ global controls_enviro aqi Temperature Precipitation Sunshine
 * Main global for all controls
 global all_controls $controls_performance $controls_political $controls_structure $controls_enviro	
 	
-** Table 2: The Impact of Political Cycle on GDP Manipulation
+** Table 1: The Impact of Political Cycle on GDP Manipulation
 
 * Model (1) ML（no controls）
 mixed cheating_gdp quarter4 || provinceid: || citycode:, reml
@@ -94,10 +94,11 @@ r2_nakagawa
 eststo maincheating
 
 * Model (2) ML (with controls)
-mixed cheating_gdp quarter4 $all_controls || provinceid: || citycode:, reml 
+mixed cheating_gdp quarter4 $all_controls || provinceid: || citycode:, reml
 r2_nakagawa
 eststo withcontrols
 
+* Model 3 employs multiple imputation to address missing data. Because the associated data file is large (~1.02 GB), it is available from the corresponding author upon reasonable request.
 * Model (4) Fixed Effects with Robust SE, including diagnostic tests
 xtset citycode timequarter  // Make sure you have set the panel structure properly
 xtreg cheating_gdp quarter4 target_city rank_gdpr_3q mayor_age secretary_age Rank mayor_lastyear secretary_lastyear Industry3 urbanization population_density aqi Temperature Precipitation Sunshine, fe
@@ -134,7 +135,7 @@ esttab  maincheating withcontrols fer towwfe gmm using results.rtf, ///
 /*****************************************************************************
 *                              Mechanism Analysis                          *
 *****************************************************************************/
-** Table 3: Moderating Influences of Fiscal Autonomy
+** Table 2: Moderating Influences of Fiscal Autonomy
 
 * Model (1) Interaction with Municipal_fiscal (City-level)
 * Corrected: now includes the 'urbanization' control via the macro
@@ -149,11 +150,11 @@ r2_nakagawa
 eststo fiscal	
 esttab  mfiscal fiscal  using moderator.rtf, ///
     append star(* 0.10 ** 0.05 *** 0.01) staraux r2 nogaps ///
-    title("Table 3 Moderating Influences of  Fiscal Autonomy") ///
+    title("Table 2 Moderating Influences of  Fiscal Autonomy") ///
     b(%9.3f) se(%9.3f) ///
     cells(b(star fmt(%9.3f)) se(fmt(%9.3f) par([ ])))
 
-** Table 4: Moderating Influences of Marketization (using renamed variables)
+** Table 3: Moderating Influences of Marketization (using renamed variables)
 
 * Model (1) Interaction with overall marketization index
 * Corrected: now includes the 'urbanization' control via the macro
@@ -175,11 +176,48 @@ mixed cheating_gdp i.quarter4##c.legal_env_dev $all_controls || provinceid: || c
 eststo market6
 esttab market1 market2 market3 market4 market5 market6 using moderator.rtf, ///
     append star(* 0.10 ** 0.05 *** 0.01) staraux r2 nogaps ///
-     title("Table 4 Moderating Influences of Marketization") ///
+     title("Table 3 Moderating Influences of Marketization") ///
     b(%9.3f) se(%9.3f) ///
     cells(b(star fmt(%9.3f)) se(fmt(%9.3f) par([ ])))	
 
-***Figure 1 Marginal Effects plot for interaction term
+
+	
+/*****************************************************************************
+*                           Strategic Manipulation                          *
+*****************************************************************************/   
+** Table 4: Evidence of Strategic Manipulation
+
+* Model (1) Interaction with Provincial_Secretary's final term
+* This model was correct, no variables were missing
+mixed cheating_gdp i.quarter4##i.Provincial_Secretary $all_controls || provinceid: || citycode:, reml
+r2_nakagawa
+eststo PSecretary
+
+* Model (2) Interaction with Target Attainment Rate
+* Corrected: now includes the 'urbanization' control via the macro
+mixed cheating_gdp c.Target_Attainment_Rate##i.quarter4 $all_controls || provinceid: || citycode:, reml
+r2_nakagawa
+eststo targetattainment
+
+* Model (3) Variation across all quarters
+* This model was correct, no variables were missing
+mixed cheating_gdp i.quarter $all_controls || provinceid: || citycode:, reml	
+r2_nakagawa
+eststo allquarters	
+esttab PSecretary targetattainment allquarters using Strategic_Manipulation.rtf, ///
+    append star(* 0.10 ** 0.05 *** 0.01) staraux r2 nogaps ///
+     mtitles("FinalTerm" "Target Attainment Rate" "Quarter") ///
+    title("Table 5 Evidence of Strategic Manipulation") ///
+    b(%9.3f) se(%9.3f) ///
+    cells(b(star fmt(%9.3f)) se(fmt(%9.3f) par([ ])))
+
+	
+/*****************************************************************************
+*                                 Figures                                    *
+*****************************************************************************/ 
+***Figure 1: See the R file "figure1_adjusted_quarterly_gdp.R" for details.
+
+***Figure 2 Marginal Effects plot for interaction term
 **Figure 1.1 Interaction term: fiscal_autonomy
 * 1. Run mixed-effects model
 mixed cheating_gdp i.quarter4##c.fiscal_autonomy $all_controls || provinceid: || citycode:, reml
@@ -224,39 +262,25 @@ graph combine q4_marginal_effects.gph q4_market_effects.gph, ///
     title("Marginal Effects of Fourth Quarter on GDP Manipulation") ///
     b1("Marginal Effects")  xsize(12) ysize(8)
 graph export "combined_graphs.png", replace width(3000) as(png)
-	
-/*****************************************************************************
-*                           Strategic Manipulation                          *
-*****************************************************************************/   
-** Table 5: Evidence of Strategic Manipulation
 
-* Model (1) Interaction with Provincial_Secretary's final term
-* This model was correct, no variables were missing
-mixed cheating_gdp i.quarter4##i.Provincial_Secretary $all_controls || provinceid: || citycode:, reml
-r2_nakagawa
-eststo PSecretary
-
-* Model (2) Interaction with Target Attainment Rate
-* Corrected: now includes the 'urbanization' control via the macro
+***Figure 3 Marginal Effect of Q4 on GDP Manipulation across Levels of Target Attainment
+summarize Target_Attainment_Rate
 mixed cheating_gdp c.Target_Attainment_Rate##i.quarter4 $all_controls || provinceid: || citycode:, reml
-r2_nakagawa
-eststo targetattainment
-
-* Model (3) Variation across all quarters
-* This model was correct, no variables were missing
-mixed cheating_gdp i.quarter $all_controls || provinceid: || citycode:, reml	
-r2_nakagawa
-eststo allquarters	
-esttab PSecretary targetattainment allquarters using Strategic_Manipulation.rtf, ///
-    append star(* 0.10 ** 0.05 *** 0.01) staraux r2 nogaps ///
-     mtitles("FinalTerm" "Target Attainment Rate" "Quarter") ///
-    title("Table 5 Evidence of Strategic Manipulation") ///
-    b(%9.3f) se(%9.3f) ///
-    cells(b(star fmt(%9.3f)) se(fmt(%9.3f) par([ ])))
-
-
+margins, dydx(quarter4) ///
+    at(Target_Attainment_Rate=(0.55(0.005)0.76)) ///
+    
+marginsplot, xdimension(Target_Attainment_Rate) ///
+    title("Marginal Effect of Q4 on GDP Manipulation", size(medium)) ///
+    ytitle("Marginal Effect of Q4") ///
+    xtitle("Target Attainment Rate") ///
+	ylabel(0(0.02)0.08, angle(h) format(%3.2f)) /// 
+    xlabel(0.55(0.05)0.75, format(%3.2f)) ///
+	legend(off) ///
+    recast(line) recastci(rarea) ///
+    ciopts(color(gs12%50)) ///
+    plotopts(lcolor(navy) lwidth(medthick)) ///            
+    addplot(rug Target_Attainment_Rate, yaxis(1) lowerc(0) upperc(0.005) lcolor(gs8))
 
 
-
-
+***Figure 4: See the R file "figure 4_Adjusted_Effect_of_Quarter_on_GDP_Manipulation.R" for details.
 
